@@ -21,7 +21,7 @@ public class RoomController {
 
     @GetMapping("/api/rooms")
     public List<Room> getRooms() {
-        // Rooms are now loaded from the application configuration
+        // Rooms are now loaded from a database
         return roomService.getAllRooms();
     }
 }
