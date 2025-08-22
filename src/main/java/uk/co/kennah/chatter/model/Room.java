@@ -1,8 +1,8 @@
 package uk.co.kennah.chatter.model;
 
 public class Room {
-    private final String id;
-    private final String name;
+    private String id;
+    private String name;
     private final String address;
     private final String audience;
 
