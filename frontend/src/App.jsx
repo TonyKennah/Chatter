@@ -1,149 +1,198 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 
-function App() {
+function ChatRoom({ room, onLeave }) {
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [typingUsers, setTypingUsers] = useState({});
+  const [inputValue, setInputValue] = useState('');
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const ws = useRef(null);
   const messagesEndRef = useRef(null);
   const typingTimeout = useRef(null);
 
   useEffect(() => {
+    // Don't connect if there's no room.
+    if (!room) return;
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/chat`;
+    // KEY FIX 1: Connect directly to the backend's port during development.
+    const backendHost = 'localhost:8080';
 
+    // KEY FIX 2: Properly encode the room ID for the URL.
+    const encodedRoomId = encodeURIComponent(room.id);
+    const wsUrl = `${protocol}//${backendHost}/chat-ws/${encodedRoomId}`;
 
-    // Connect to the WebSocket server
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onopen = () => {
-      console.log('WebSocket connection opened');
+      console.log(`WebSocket connection opened for room ${room.id}`);
+      // Clear messages from previous room
+      setMessages([]);
+    };
+
+    ws.current.onerror = (error) => {
+      console.error('WebSocket Error: The connection to the server could not be established. Please check that the backend is running and accessible.');
+      console.error('Specific error event:', error);
     };
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
       switch (data.type) {
-        case 'chat':
-          setMessages(prev => [...prev, { user: data.user, text: data.payload, type: 'chat' }]);
-          setTypingUsers(prev => {
-            if (prev[data.user]) {
-              clearTimeout(prev[data.user]);
-              const { [data.user]: _, ...rest } = prev;
-              return rest;
-            }
-            return prev;
-          });
+        case 'user-id':
+          setCurrentUser(data.id);
           break;
+        case 'chat':
         case 'info':
-          setMessages(prev => [...prev, { text: data.payload, type: 'info' }]);
+          setMessages((prev) => [...prev, data]);
           break;
         case 'typing':
-          setTypingUsers(prevTypingUsers => {
-            if (prevTypingUsers[data.user]) {
-              clearTimeout(prevTypingUsers[data.user]);
-            }
-            const timerId = setTimeout(() => {
-              setTypingUsers(currentTypingUsers => {
-                const { [data.user]: _, ...rest } = currentTypingUsers;
-                return rest;
-              });
-            }, 3000); // User is considered "not typing" after 3 seconds.
-            return { ...prevTypingUsers, [data.user]: timerId };
+          setTypingUsers((prev) => {
+            const otherTypingUsers = prev.filter(u => u.id !== data.user);
+            return [...otherTypingUsers, { id: data.user, ts: Date.now() }];
           });
           break;
-        default:
+        case 'user-left':
+          setMessages((prev) => [...prev, { type: 'info', payload: `User ${data.user} has left.` }]);
           break;
+        default:
+          console.warn('Received unknown message type:', data.type);
       }
     };
 
     ws.current.onclose = () => {
-      console.log('WebSocket connection closed');
+      console.log(`WebSocket connection closed for room ${room.id}`);
     };
 
-    // Cleanup on component unmount
     return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
+      if (ws.current) ws.current.close();
     };
-  }, []); // Empty dependency array means this effect runs once on mount
+  }, [room]); // Re-establish connection when the room object changes.
 
   useEffect(() => {
-    // Scroll to the bottom every time messages update
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, typingUsers]);
+  }, [messages]);
 
-  const sendJsonMessage = (type, payload = {}) => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      const message = { type, ...payload };
-      ws.current.send(JSON.stringify(message));
+  useEffect(() => {
+    // Periodically clean up users who have stopped typing.
+    const interval = setInterval(() => {
+      setTypingUsers((prev) => prev.filter(u => Date.now() - u.ts < 2000));
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSendMessage = useCallback(() => {
+    if (inputValue.trim() && ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'chat', payload: inputValue }));
+      setInputValue('');
     }
+  }, [inputValue]);
+
+  const handleTyping = useCallback(() => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'typing' }));
+    }
+  }, []);
+
+  const handleInputChange = useCallback((e) => {
+    setInputValue(e.target.value);
+    if (typingTimeout.current) {
+      clearTimeout(typingTimeout.current);
+    }
+    typingTimeout.current = setTimeout(handleTyping, 300);
+  }, [handleTyping]);
+
+  const filteredTypingUsers = typingUsers.filter(u => u.id !== currentUser);
+
+  return (
+    <div className="chat-container">
+      <div className="chat-header">
+        <h2>{room.name}</h2>
+        <button onClick={onLeave} className="leave-button">Leave Room</button>
+      </div>
+      <div className="messages">
+        {messages.map((msg, index) => (
+          <div
+            key={index}
+            className={`message ${msg.type === 'info' ? 'info-message' : ''} ${msg.user === currentUser ? 'current-user' : ''}`}
+          >
+            {msg.type === 'info' ? (
+              <span>{msg.payload}</span>
+            ) : (
+              <span><strong>{msg.user === currentUser ? 'You' : msg.user}:</strong> {msg.payload}</span>
+            )}
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="typing-indicator">
+        {filteredTypingUsers.length > 0 &&
+          `${filteredTypingUsers.map(u => u.id).join(', ')} ${filteredTypingUsers.length === 1 ? 'is' : 'are'} typing...`
+        }
+      </div>
+      <div className="input-area">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+          placeholder="Type a message..."
+        />
+        <button onClick={handleSendMessage}>Send</button>
+      </div>
+    </div>
+  );
+}
+
+function RoomBrowser({ onSelectRoom, rooms }) {
+  return (
+    <div className="room-browser">
+      <h2>Join a Room</h2>
+      <div className="room-list">
+        {rooms.map((room) => (
+          <button key={room.id} onClick={() => onSelectRoom(room)}>
+            {room.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// This component manages which view is active: the room browser or the chat room.
+function App() {
+  const [rooms, setRooms] = useState([]);
+  const [currentRoom, setCurrentRoom] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/rooms')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch rooms. Is the backend server running?');
+        }
+        return response.json();
+      })
+      .then(data => setRooms(data))
+      .catch(error => console.error(error.message));
+  }, []);
+
+  const handleSelectRoom = (room) => {
+    setCurrentRoom(room);
   };
 
-  const sendMessage = () => {
-    if (input.trim()) {
-      sendJsonMessage('chat', { payload: input });
-      setMessages(prev => [...prev, { user: 'You', text: input, type: 'chat' }]);
-      setInput('');
-      if (typingTimeout.current) {
-        clearTimeout(typingTimeout.current);
-        typingTimeout.current = null;
-      }
-    }
+  const handleLeaveRoom = () => {
+    setCurrentRoom(null);
   };
-
-  const handleTyping = (e) => {
-    setInput(e.target.value);
-    if (!typingTimeout.current) {
-      sendJsonMessage('typing');
-      typingTimeout.current = setTimeout(() => {
-        typingTimeout.current = null;
-      }, 2000); // Can send a typing event every 2 seconds
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      sendMessage();
-    }
-  };
-
-  const typingIndicatorText = Object.keys(typingUsers).length > 0
-    ? `${Object.keys(typingUsers).join(', ')} is typing...`
-    : '\u00A0'; // non-breaking space to maintain layout
 
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Chatter</h1>
+        <h1>We Chat Here</h1>
       </header>
-      <div className="chat-container">
-        <div className="messages">
-          {messages.map((msg, index) => (
-            <div key={index} className={`message ${msg.type === 'info' ? 'info-message' : ''}`}>
-              {msg.type === 'chat' && <strong>{msg.user}: </strong>}
-              {msg.text}
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-        <div className="typing-indicator">
-          {typingIndicatorText}
-        </div>
-        <div className="input-area">
-          <input
-            type="text"
-            value={input}
-            onChange={handleTyping}
-            onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
-          />
-          <button onClick={sendMessage}>Send</button>
-        </div>
-      </div>
+      {currentRoom ? (
+        <ChatRoom room={currentRoom} onLeave={handleLeaveRoom} />
+      ) : (
+        <RoomBrowser onSelectRoom={handleSelectRoom} rooms={rooms} />
+      )}
     </div>
   );
 }
