@@ -185,9 +185,6 @@ function App() {
 
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>We Chat Here</h1>
-      </header>
       <main className="App-main">
         {currentRoom ? (
           <ChatRoom room={currentRoom} onLeave={handleLeaveRoom} />
