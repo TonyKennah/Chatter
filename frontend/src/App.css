@@ -3,66 +3,97 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  background-color: #282c34;
+  color: white;
 }
 
 .App-header {
   background-color: #20232a;
   padding: 20px;
   color: white;
+  flex-shrink: 0;
 }
 
 .chat-container {
+  /* Make this a flex container that grows to fill available space */
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+  /* Important: this contains the scrolling messages div */
+  overflow: hidden;
   padding: 20px;
-  max-width: 800px;
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
+  gap: 10px;
 }
 
 .messages {
+  /* This will grow to fill the space, and scroll when content overflows */
   flex-grow: 1;
   overflow-y: auto;
+  text-align: left;
+  padding: 10px;
   border: 1px solid #444;
   border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 20px;
+  background-color: #3c3f41;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.message strong {
+  color: #61dafb;
+}
+
+.info-message {
+  align-self: center;
+  font-style: italic;
+  color: #aaa;
+  background-color: transparent;
+  border: none;
+}
+
+.typing-indicator {
+  flex-shrink: 0;
+  height: 1.2em; /* Reserve space to prevent layout shift */
+  padding: 0 10px 5px 10px;
+  font-style: italic;
+  color: #aaa;
   text-align: left;
-  background-color: #3c4049;
 }
 
 .message {
-  padding: 8px;
-  margin-bottom: 5px;
-  border-radius: 5px;
+  padding: 8px 12px;
+  border-radius: 15px;
   background-color: #4f545c;
+  max-width: 80%;
+  word-wrap: break-word;
+  align-self: flex-start;
 }
 
 .input-area {
   display: flex;
+  flex-shrink: 0;
 }
 
 .input-area input {
   flex-grow: 1;
   padding: 10px;
-  border-radius: 5px;
-  border: 1px solid #444;
+  border-radius: 20px;
+  border: 1px solid #555;
   margin-right: 10px;
-  font-size: 16px;
+  background-color: #4f545c;
+  color: white;
 }
 
 .input-area button {
   padding: 10px 20px;
-  border-radius: 5px;
+  border-radius: 20px;
   border: none;
   background-color: #61dafb;
   color: #20232a;
-  font-size: 16px;
   cursor: pointer;
+  font-weight: bold;
 }
 
 .input-area button:hover {
-  background-color: #72e2ff;
+  background-color: #21a1f2;
 }
