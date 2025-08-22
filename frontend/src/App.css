@@ -27,6 +27,7 @@ h2 {
   flex-direction: column;
   width: 100%;
   max-width: 960px;
+  min-height: 0; /* Allow this container to shrink, crucial for nested flex-grow */
   margin: 0 auto;
 }
 
@@ -52,6 +53,7 @@ h2 {
   /* This will grow to fill the space, and scroll when content overflows */
   flex-grow: 1;
   overflow-y: auto;
+  min-height: 0; /* Ensures the flex item can shrink as needed */
   text-align: left;
   padding: 10px;
   border: 1px solid #444;
