@@ -1,8 +1,8 @@
-package uk.co.kennah.chatter;
+package uk.co.kennah.chatter.model;
 
 public class Room {
-    private final String id;
-    private final String name;
+    private String id;
+    private String name;
 
     public Room(String id, String name) {
         this.id = id;
@@ -17,4 +17,3 @@ public class Room {
         return name;
     }
 }
-

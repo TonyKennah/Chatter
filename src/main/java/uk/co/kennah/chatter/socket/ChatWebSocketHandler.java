@@ -1,4 +1,4 @@
-package uk.co.kennah.chatter;
+package uk.co.kennah.chatter.socket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;

@@ -1,4 +1,4 @@
-package uk.co.kennah.chatter;
+package uk.co.kennah.chatter.socket;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
