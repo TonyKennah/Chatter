@@ -11,7 +11,7 @@ function ChatRoom({ room, onLeave }) {
   const typingTimeout = useRef(null);
 
   useEffect(() => {
-    // Don't connect if there's no room.
+    // Don't connect if there's no room object.
     if (!room) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -188,11 +188,13 @@ function App() {
       <header className="App-header">
         <h1>We Chat Here</h1>
       </header>
-      {currentRoom ? (
-        <ChatRoom room={currentRoom} onLeave={handleLeaveRoom} />
-      ) : (
-        <RoomBrowser onSelectRoom={handleSelectRoom} rooms={rooms} />
-      )}
+      <main className="App-main">
+        {currentRoom ? (
+          <ChatRoom room={currentRoom} onLeave={handleLeaveRoom} />
+        ) : (
+          <RoomBrowser onSelectRoom={handleSelectRoom} rooms={rooms} />
+        )}
+      </main>
     </div>
   );
 }
