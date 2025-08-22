@@ -18,9 +18,9 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) throws Exception {
         // Seed data only if no rooms exist
         if (roomService.getAllRooms().isEmpty()) {
-            roomService.createRoom("general", "General Chat");
-            roomService.createRoom("tech-talk", "Tech Talk");
-            roomService.createRoom("random", "Random Banter");
+            roomService.createRoom("general", "General Chat", "", "");
+            roomService.createRoom("tech-talk", "Tech Talk", "", "");
+            roomService.createRoom("random", "Random Banter", "", "");
         }
     }
 }

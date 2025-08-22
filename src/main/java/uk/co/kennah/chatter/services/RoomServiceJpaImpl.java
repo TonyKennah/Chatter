@@ -26,7 +26,7 @@ public class RoomServiceJpaImpl implements RoomService {
     }
 
     @Override
-    public void createRoom(String id, String name) {
-        repository.save(new RoomJpaEntity(id, name));
+    public void createRoom(String id, String name, String address, String audience) {
+        repository.save(new RoomJpaEntity(id, name, address, audience));
     }
 }

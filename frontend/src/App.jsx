@@ -13,17 +13,13 @@ function ChatRoom({ room, onLeave }) {
   useEffect(() => {
     // Don't connect if there's no room object.
     if (!room) return;
-
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // KEY FIX 1: Connect directly to the backend's port during development.
     const backendHost = 'localhost:8080';
-
-    // KEY FIX 2: Properly encode the room ID for the URL.
     const encodedRoomId = encodeURIComponent(room.id);
     const wsUrl = `${protocol}//${backendHost}/chat-ws/${encodedRoomId}`;
 
     ws.current = new WebSocket(wsUrl);
-
+    
     ws.current.onopen = () => {
       console.log(`WebSocket connection opened for room ${room.id}`);
       // Clear messages from previous room

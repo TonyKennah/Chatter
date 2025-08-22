@@ -26,7 +26,7 @@ public class RoomServiceMongoImpl implements RoomService {
     }
 
     @Override
-    public void createRoom(String id, String name) {
-        repository.save(new RoomMongoDocument(id, name));
+    public void createRoom(String id, String name, String address, String audience) {
+        repository.save(new RoomMongoDocument(id, name, address, audience));
     }
 }

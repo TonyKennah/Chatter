@@ -8,6 +8,6 @@ public interface RoomService {
 
     List<Room> getAllRooms();
 
-    void createRoom(String id, String name);
+    void createRoom(String id, String name, String address, String audience);
 
 }
