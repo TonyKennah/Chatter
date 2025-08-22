@@ -1,3 +1,5 @@
+[![Build & Test Status](https://github.com/TonyKennah/Chatter/actions/workflows/maven.yml/badge.svg)](https://github.com/TonyKennah/Chatter/actions/workflows/maven.yml)
+
 # Chatter
 
 Chatter is a simple real-time chat application.
