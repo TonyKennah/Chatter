@@ -1,9 +1,12 @@
 package uk.co.kennah.chatter.socket;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.lang.NonNull;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -28,7 +31,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+    public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
         String username = getUsernameFromUri(session);
         if (username == null || username.trim().isEmpty()) {
             logger.warn("Connection established but no username found in URI: {}. Closing session.", session.getUri());
@@ -56,7 +59,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+    public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) throws Exception {
         String roomId = (String) session.getAttributes().get("decodedRoomId");
         String username = (String) session.getAttributes().get("username");
         if (roomId != null) {
@@ -81,7 +84,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
+    protected void handleTextMessage(@NonNull WebSocketSession session, @NonNull TextMessage message) throws IOException {
         String roomId = (String) session.getAttributes().get("decodedRoomId");
         String username = (String) session.getAttributes().get("username");
         if (roomId == null || username == null) {
@@ -92,7 +95,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         Map<String, String> messageMap;
         try {
-            messageMap = objectMapper.readValue(message.getPayload(), Map.class);
+            messageMap = objectMapper.readValue(message.getPayload(), new TypeReference<Map<String, String>>() {});
         } catch (IOException e) {
             logger.warn("Invalid JSON received: {}", message.getPayload());
             return;
