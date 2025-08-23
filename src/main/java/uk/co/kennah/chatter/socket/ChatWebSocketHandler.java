@@ -29,6 +29,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+        String username = getUsernameFromUri(session);
+        if (username == null || username.trim().isEmpty()) {
+            logger.warn("Connection established but no username found in URI: {}. Closing session.", session.getUri());
+            session.close(CloseStatus.BAD_DATA.withReason("Username is required."));
+            return;
+        }
+        session.getAttributes().put("username", username);
+
         String roomId = getRoomIdFromUri(session);
         if (roomId == null) {
             logger.warn("Connection established but no roomId found in URI: {}. Closing session.", session.getUri());
@@ -39,21 +47,18 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         // Store the decoded room ID in the session attributes for later use
         session.getAttributes().put("decodedRoomId", roomId);
 
-        logger.info("New WebSocket connection established for room: {}. Session ID: {}", roomId, session.getId());
+        logger.info("New WebSocket connection established for room: {}, user: '{}', session: {}", roomId, username, session.getId());
         rooms.computeIfAbsent(roomId, k -> new CopyOnWriteArraySet<>()).add(session);
 
-        String userId = getShortId(session.getId());
-        // Send the new user their unique ID
-        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of("type", "user-id", "id", userId))));
-
         // Broadcast to the room that a new user has joined
-        String joinMessage = objectMapper.writeValueAsString(Map.of("type", "info", "payload", "User " + userId + " has joined."));
+        String joinMessage = objectMapper.writeValueAsString(Map.of("type", "info", "payload", "User '" + username + "' has joined."));
         broadcastToRoom(roomId, joinMessage);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         String roomId = (String) session.getAttributes().get("decodedRoomId");
+        String username = (String) session.getAttributes().get("username");
         if (roomId != null) {
             logger.info("Connection closed for room: {}. Session ID: {}. Status: {}", roomId, session.getId(), status);
             Set<WebSocketSession> sessions = rooms.get(roomId);
@@ -64,9 +69,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     logger.info("Room {} is now empty and has been removed.", roomId);
                 } else {
                     // Broadcast to the room that a user has left
-                    String userId = getShortId(session.getId());
-                    String leaveMessage = objectMapper.writeValueAsString(Map.of("type", "user-left", "user", userId));
-                    broadcastToRoom(roomId, leaveMessage);
+                    if (username != null) {
+                        String leaveMessage = objectMapper.writeValueAsString(Map.of("type", "info", "payload", "User '" + username + "' has left."));
+                        broadcastToRoom(roomId, leaveMessage);
+                    }
                 }
             }
         } else {
@@ -77,11 +83,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
         String roomId = (String) session.getAttributes().get("decodedRoomId");
-        if (roomId == null) {
+        String username = (String) session.getAttributes().get("username");
+        if (roomId == null || username == null) {
             return; // Should not happen if connection was established correctly
         }
 
-        logger.info("Received message: {} from session: {} in room: {}", message.getPayload(), session.getId(), roomId);
+        logger.info("Received message: {} from user: {} in room: {}", message.getPayload(), username, roomId);
 
         Map<String, String> messageMap;
         try {
@@ -97,7 +104,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        String userId = getShortId(session.getId());
         Map<String, String> broadcastMessage;
         String messageJson;
 
@@ -105,12 +111,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             case "chat":
                 String payload = messageMap.get("payload");
                 if (payload == null) return;
-                broadcastMessage = Map.of("type", "chat", "user", userId, "payload", payload);
+                broadcastMessage = Map.of("type", "chat", "user", username, "payload", payload);
                 messageJson = objectMapper.writeValueAsString(broadcastMessage);
                 broadcastToRoom(roomId, messageJson);
                 break;
             case "typing":
-                broadcastMessage = Map.of("type", "typing", "user", userId);
+                broadcastMessage = Map.of("type", "typing", "user", username);
                 messageJson = objectMapper.writeValueAsString(broadcastMessage);
                 broadcastToOthersInRoom(roomId, session, messageJson);
                 break;
@@ -154,7 +160,20 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private String getShortId(String sessionId) {
-        return sessionId.substring(0, 8);
+    private String getUsernameFromUri(WebSocketSession session) {
+        if (session.getUri() == null) {
+            return null;
+        }
+        try {
+            Map<String, String> queryParams = UriComponentsBuilder.fromUri(session.getUri()).build().getQueryParams().toSingleValueMap();
+            String username = queryParams.get("username");
+            if (username != null) {
+                return URLDecoder.decode(username, StandardCharsets.UTF_8.name());
+            }
+            return null;
+        } catch (UnsupportedEncodingException e) {
+            logger.error("Failed to decode username from URI: {}", session.getUri(), e);
+            return null;
+        }
     }
 }

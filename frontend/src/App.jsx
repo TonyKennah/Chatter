@@ -1,7 +1,33 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 
-function ChatRoom({ room, onLeave }) {
+function UsernameInput({ onUsernameSubmit }) {
+  const [input, setInput] = useState('');
+
+  const handleSubmit = () => {
+    if (input.trim()) {
+      onUsernameSubmit(input.trim());
+    }
+  };
+
+  return (
+    <div className="username-container">
+      <h2>Enter your username</h2>
+      <div className="input-area">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+          placeholder="Your name..."
+        />
+        <button onClick={handleSubmit}>Join</button>
+      </div>
+    </div>
+  );
+}
+
+function ChatRoom({ room, onLeave, username }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [typingUsers, setTypingUsers] = useState([]);
@@ -12,16 +38,17 @@ function ChatRoom({ room, onLeave }) {
 
   useEffect(() => {
     // Don't connect if there's no room object.
-    if (!room) return;
+    if (!room || !username) return;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const backendHost = 'localhost:8080';
     const encodedRoomId = encodeURIComponent(room.id);
-    const wsUrl = `${protocol}//${backendHost}/chat-ws/${encodedRoomId}`;
+    const encodedUsername = encodeURIComponent(username);
+    const wsUrl = `${protocol}//${backendHost}/chat-ws/${encodedRoomId}?username=${encodedUsername}`;
 
     ws.current = new WebSocket(wsUrl);
     
     ws.current.onopen = () => {
-      console.log(`WebSocket connection opened for room ${room.id}`);
+      console.log(`WebSocket connection opened for room ${room.id} as user ${username}`);
       // Clear messages from previous room
       setMessages([]);
     };
@@ -62,7 +89,7 @@ function ChatRoom({ room, onLeave }) {
     return () => {
       if (ws.current) ws.current.close();
     };
-  }, [room]); // Re-establish connection when the room object changes.
+  }, [room, username]); // Re-establish connection when the room object changes.
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -158,18 +185,25 @@ function RoomBrowser({ onSelectRoom, rooms }) {
 function App() {
   const [rooms, setRooms] = useState([]);
   const [currentRoom, setCurrentRoom] = useState(null);
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
-    fetch('/api/rooms')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch rooms. Is the backend server running?');
-        }
-        return response.json();
-      })
-      .then(data => setRooms(data))
-      .catch(error => console.error(error.message));
-  }, []);
+    if (username) { // Only fetch rooms after a username is entered
+      fetch('/api/rooms')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch rooms. Is the backend server running?');
+          }
+          return response.json();
+        })
+        .then(data => setRooms(data))
+        .catch(error => console.error(error.message));
+    }
+  }, [username]);
+
+  const handleUsernameSubmit = (name) => {
+    setUsername(name);
+  };
 
   const handleSelectRoom = (room) => {
     setCurrentRoom(room);
@@ -182,8 +216,10 @@ function App() {
   return (
     <div className="App">
       <main className="App-main">
-        {currentRoom ? (
-          <ChatRoom room={currentRoom} onLeave={handleLeaveRoom} />
+        {!username ? (
+          <UsernameInput onUsernameSubmit={handleUsernameSubmit} />
+        ) : currentRoom ? (
+          <ChatRoom room={currentRoom} onLeave={handleLeaveRoom} username={username} />
         ) : (
           <RoomBrowser onSelectRoom={handleSelectRoom} rooms={rooms} />
         )}
