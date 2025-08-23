@@ -9,6 +9,7 @@ Chatter is a simple real-time chat application designed for auto-scaling environ
 The application is built with a Java and Spring Boot backend, managed with Maven.
 
 *   **Backend**: Java, Spring Boot
+*   **Frontend**: React, Vite
 *   **Real-time Communication**: Spring WebSockets
 *   **Database**: MongoDB (for cloud/production environments), H2 (for local development)
 *   **Build Tool**: Maven
@@ -40,7 +41,7 @@ This mechanism ensures that each server instance, whether running locally for de
 
 ## Running the Application
 
-To run the application, you will need Java and Maven installed. Here are some common ways to start the application from the project's root directory:
+To run the backend server, you will need Java and Maven installed. Here are some common ways to start the application from the project's root directory:
 
 ### Basic Run
 ```shell
