@@ -16,6 +16,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -107,25 +109,54 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        Map<String, String> broadcastMessage;
-        String messageJson;
-
         switch (messageType) {
             case "chat":
                 String payload = messageMap.get("payload");
                 if (payload == null) return;
-                broadcastMessage = Map.of("type", "chat", "user", username, "payload", payload);
-                messageJson = objectMapper.writeValueAsString(broadcastMessage);
-                broadcastToRoom(roomId, messageJson);
+
+                if (payload.startsWith("/")) {
+                    handleCommand(session, payload);
+                } else {
+                    Map<String, String> broadcastMessage = Map.of("type", "chat", "user", username, "payload", payload);
+                    String messageJson = objectMapper.writeValueAsString(broadcastMessage);
+                    broadcastToRoom(roomId, messageJson);
+                }
                 break;
             case "typing":
-                broadcastMessage = Map.of("type", "typing", "user", username);
-                messageJson = objectMapper.writeValueAsString(broadcastMessage);
+                Map<String, String> broadcastMessage = Map.of("type", "typing", "user", username);
+                String messageJson = objectMapper.writeValueAsString(broadcastMessage);
                 broadcastToOthersInRoom(roomId, session, messageJson);
                 break;
             default:
                 logger.warn("Unknown message type received: {}", messageType);
         }
+    }
+
+    private void handleCommand(WebSocketSession session, String commandPayload) throws IOException {
+        String[] parts = commandPayload.split(" ", 2);
+        String command = parts[0];
+
+        switch (command) {
+            case "/me":
+                handleMeCommand(session);
+                break;
+            default:
+                String unknownCommandMessage = "Unknown command: " + command;
+                Map<String, String> response = Map.of("type", "info", "payload", unknownCommandMessage);
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
+                break;
+        }
+    }
+
+    private void handleMeCommand(WebSocketSession session) throws IOException {
+        String username = (String) session.getAttributes().get("username");
+        if (username == null) return;
+
+        String serverTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        String responsePayload = "Hello " + username + "! Current Server time is " + serverTime;
+
+        Map<String, String> response = Map.of("type", "info", "payload", responsePayload);
+        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
     }
 
     private void broadcastToRoom(String roomId, String message) throws IOException {
