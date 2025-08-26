@@ -6,7 +6,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Step 2: Run the app
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:17-jdk
 WORKDIR /app
-COPY ./target/*.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 ENTRYPOINT ["java","-jar","/app.jar"]
