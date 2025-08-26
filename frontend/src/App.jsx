@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 
+const BACKEND_HOST = 'chatter-w5wx.onrender.com';
+
 function UsernameInput({ onUsernameSubmit }) {
   const [input, setInput] = useState('');
 
@@ -40,7 +42,7 @@ function ChatRoom({ room, onLeave, username }) {
     // Don't connect if there's no room object.
     if (!room || !username) return;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const backendHost = 'localhost:8080';
+    const backendHost = BACKEND_HOST;
     const encodedRoomId = encodeURIComponent(room.id);
     const encodedUsername = encodeURIComponent(username);
     const wsUrl = `${protocol}//${backendHost}/chat-ws/${encodedRoomId}?username=${encodedUsername}`;
@@ -189,7 +191,7 @@ function App() {
 
   useEffect(() => {
     if (username) { // Only fetch rooms after a username is entered
-      fetch('/api/rooms')
+      fetch(`https://${BACKEND_HOST}/api/rooms`)
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to fetch rooms. Is the backend server running?');
