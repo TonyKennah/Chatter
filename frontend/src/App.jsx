@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 
-const BACKEND_HOST = 'chatter-w5wx.onrender.com';
+const IS_LOCALHOST = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BACKEND_HOST = IS_LOCALHOST ? 'localhost:8080' : 'chatter-w5wx.onrender.com';
+const API_PROTOCOL = IS_LOCALHOST ? 'http' : 'https';
+const WS_PROTOCOL = IS_LOCALHOST ? 'ws' : 'wss';
 
 function UsernameInput({ onUsernameSubmit }) {
   const [input, setInput] = useState('');
@@ -41,11 +44,9 @@ function ChatRoom({ room, onLeave, username }) {
   useEffect(() => {
     // Don't connect if there's no room object.
     if (!room || !username) return;
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const backendHost = BACKEND_HOST;
     const encodedRoomId = encodeURIComponent(room.id);
     const encodedUsername = encodeURIComponent(username);
-    const wsUrl = `${protocol}//${backendHost}/chat-ws/${encodedRoomId}?username=${encodedUsername}`;
+    const wsUrl = `${WS_PROTOCOL}://${BACKEND_HOST}/chat-ws/${encodedRoomId}?username=${encodedUsername}`;
 
     ws.current = new WebSocket(wsUrl);
     
@@ -191,7 +192,7 @@ function App() {
 
   useEffect(() => {
     if (username) { // Only fetch rooms after a username is entered
-      fetch(`https://${BACKEND_HOST}/api/rooms`)
+      fetch(`${API_PROTOCOL}://${BACKEND_HOST}/api/rooms`)
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to fetch rooms. Is the backend server running?');

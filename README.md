@@ -4,6 +4,8 @@
 
 Chatter is a simple real-time chat application designed for auto-scaling environments. It uses WebSockets for instant, two-way communication between clients and the server.
 
+[RUNNING HERE](https://chatter-w5wx.onrender.com/)
+
 ## Tech Stack
 
 The application is built with a Java and Spring Boot backend, managed with Maven.
